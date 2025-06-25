@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  
+  <!-- layout  -->
+  <title>Place an Order</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      max-width: 800px;
+      margin: auto;
+    }
+
+    h1, h2 {
+      margin-top: 2rem;
+    }
+
+    label {
+      display: block;
+      margin: 0.5rem 0 0.2rem;
+      font-weight: bold;
+    }
+
+    input, select {
+      padding: 0.5rem;
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 1rem;
+    }
+
+    section {
+      margin-bottom: 2rem;
+    }
+
+    #result {
+      margin-top: 2rem;
+      background: #f4f4f4;
+      padding: 1rem;
+      border-left: 4px solid #0078a0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Place an order</h1>
+
+  <!-- selecting an item -->
+  <section>
+    <h2>Choose your item</h2>
+    <label for="item-select">Item</label>
+    <select id="item-select"></select>
+
+    <label>
+      <input type="checkbox" id="refrigerated">
+      Does it need to be refrigerated?
+    </label>
+
+    <label for="quantity">What is the quantity of your item?</label>
+    <input type="number" id="quantity" min="1" placeholder="e.g. 10">
+  </section>
+
+  <!-- selecting location -->
+  <section>
+    <h2>Choose your delivery location</h2>
+    <label for="location-select">Location</label>
+    <select id="location-select"></select>
+  </section>
+
+  <!-- choosing preferred arrival date/time -->
+  <section>
+    <h2>Choose your preferred arrival date/time</h2>
+    <label for="date">Date</label>
+    <input type="date" id="date">
+  </section>
+
+  <!-- submit button field -->
+  <button id="submit-button">Submit Order</button>
+
+  <!-- response area -->
+  <div id="result" style="display:none;"></div>
+
+
+  <!-- begin JavaScript portion -->
+  <script>
+    // ========== fetching product info from backend ==========
+  
+    // Fetch list of all products (standard + refrigerated) from backend
+    fetch('http://localhost:5000/api/products') // replace link later
+  
+      // Convert raw HTTP response to JSON
+      .then(res => res.json())
+  
+      .then(data => {
+        // Find <select> element for products
+        const select = document.getElementById('item-select');
+  
+        // Loop through each product returned
+        data.forEach(item => {
+          const option = document.createElement('option');
+  
+          // Use Product_ID from backend as the value
+          option.value = item.Product_ID;
+  
+          // Show Product_name in the dropdown
+          option.textContent = item.Product_name;
+  
+          select.appendChild(option);
+        });
+      })
+  
+      .catch(err => console.error('Failed to load products:', err));
+  
+  
+  
+    // ========== fetching locations from backend ==========
+  
+    // Fetch delivery location options from backend
+    fetch('http://localhost:5000/api/locations') // replace link later
+  
+      .then(res => res.json())
+  
+      .then(data => {
+        const select = document.getElementById('location-select');
+  
+        data.forEach(loc => {
+          const option = document.createElement('option');
+  
+          // Use Location_ID from backend
+          option.value = loc.Location_ID;
+  
+          // Display location information
+          option.textContent = loc.City + ', ' + loc.State;
+  
+          select.appendChild(option);
+        });
+      })
+  
+      .catch(err => console.error('Failed to load locations:', err));
+  
+  
+  
+    // ========== submit button ==========
+  
+    document.getElementById('submit-button').addEventListener('click', () => {
+      // Collect form data for order creation
+      const data = {
+        product_id: document.getElementById('item-select').value,           // matches Product_ID
+        refrigerated: document.getElementById('refrigerated').checked,      // true/false for container type
+        quantity: document.getElementById('quantity').value,                // user-input quantity
+        location_id: document.getElementById('location-select').value,      // matches Location_ID
+        preferred_arrival: document.getElementById('date').value            // ISO date format
+      };
+  
+      // Send data to backend route processor
+      fetch('http://localhost:5000/api/route', { // replace link later
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+  
+      // Convert backend response to usable data
+      .then(res => res.json())
+  
+      .then(route => {
+        // Display backend result (estimated delivery info)
+        const resultDiv = document.getElementById('result');
+        resultDiv.style.display = 'block';
+  
+        resultDiv.innerHTML = `
+          <strong>Estimated Departure:</strong> ${route.Departure_time}<br>
+          <strong>Assigned Container:</strong> ${route.Container_ID}<br>
+          <strong>Drone ID:</strong> ${route.Drone_ID}
+        `;
+      })
+  
+      .catch(err => {
+        console.error('Submission error:', err);
+        alert("Something went wrong. Please try again.");
+      });
+    });
+  </script>
+  
